@@ -3,6 +3,5 @@ pandas
 matplotlib
 seaborn
 numpy
-lxml
-beautifulsoup4
 requests
+beautifulsoup4
