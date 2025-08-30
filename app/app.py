@@ -13,11 +13,11 @@ df_selected_year = df[df.Year == selected_year]
 unique_team = sorted(df_selected_year.Team.unique())
 selected_team = st.sidebar.multiselect('Team', unique_team, unique_team)
 
-unique_pos = sorted(df_selected_year.Position.unique())
+unique_pos = sorted(df_selected_year.Pos.unique())
 selected_pos = st.sidebar.multiselect('Position', unique_pos, unique_pos)
 
 df_selected_team = df_selected_year[df_selected_year.Team.isin(selected_team)]
-df_selected_team = df_selected_team[df_selected_team.Position.isin(selected_pos)]
+df_selected_team = df_selected_team[df_selected_team.Pos.isin(selected_pos)]
 
 st.subheader("Display Player Stats of Selected Team(s)")
 st.dataframe(df_selected_team)
