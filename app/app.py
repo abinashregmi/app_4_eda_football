@@ -17,7 +17,6 @@ This app performs simple web scraping of NFL Football player stats data (focusin
 
 st.sidebar.header('User Input Features')
 selected_year = st.sidebar.selectbox('Year', list(reversed(range(1990, 2023))))
-
 @st.cache_data(show_spinner=True)
 def load_data(year):
     url = f"https://www.pro-football-reference.com/years/{year}/rushing.htm"
@@ -28,11 +27,11 @@ def load_data(year):
     if table is None:
         return pd.DataFrame()
 
-    # Extract headers from thead
+    # Get headers from the last row in thead
     header_row = table.find("thead").find_all("tr")[-1]
-    headers = [th.getText() for th in header_row.find_all("th")][1:]
+    headers = [th.getText() for th in header_row.find_all("th")][1:]  # Skip 'Rk'
 
-    # Extract rows from tbody
+    # Get data rows from tbody
     rows = table.find("tbody").find_all("tr")
     data = []
     for row in rows:
@@ -46,9 +45,14 @@ def load_data(year):
     return df
 
 playerstats = load_data(selected_year)
+st.write("Columns in playerstats:", playerstats.columns.tolist())
 
 if playerstats.empty:
     st.error("Failed to load player stats. The table structure may have changed.")
+    st.stop()
+
+if "Tm" not in playerstats.columns:
+    st.error("Column 'Tm' not found in data. Check scraping logic.")
     st.stop()
 
 # Sidebar - Team selection
