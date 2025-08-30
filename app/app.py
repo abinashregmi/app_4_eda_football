@@ -16,6 +16,7 @@ This app performs simple web scraping of NFL Football player stats data (focusin
 
 st.sidebar.header('User Input Features')
 selected_year = st.sidebar.selectbox('Year', list(reversed(range(1990, 2021))))
+debug_mode = st.sidebar.checkbox("Show raw table info")
 
 @st.cache_data(show_spinner=True)
 def load_data(year):
@@ -27,15 +28,19 @@ def load_data(year):
                 df = table[table.Age != "Age"]
                 df = df.fillna(0)
                 df = df.drop(["Rk"], axis=1)
-                return df
-        return pd.DataFrame()
+                return df, tables
+        return pd.DataFrame(), tables
     except Exception:
-        return pd.DataFrame()
+        return pd.DataFrame(), []
 
-playerstats = load_data(selected_year)
+playerstats, raw_tables = load_data(selected_year)
 
 if playerstats.empty:
     st.error("Failed to load player stats. The table structure may have changed.")
+    if debug_mode and raw_tables:
+        st.subheader("Debug: Raw Table Structures")
+        for i, table in enumerate(raw_tables):
+            st.write(f"Table {i} Columns: {table.columns.tolist()}")
 else:
     sorted_unique_team = sorted(playerstats.Tm.unique())
     selected_team = st.sidebar.multiselect('Team', sorted_unique_team, sorted_unique_team)
