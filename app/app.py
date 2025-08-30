@@ -18,7 +18,7 @@ selected_year = st.sidebar.selectbox('Year', list(reversed(range(1990,2020))))
 
 # Web scraping of NFL player stats
 # https://www.pro-football-reference.com/years/2019/rushing.htm
-@st.cache
+@st.cache_data
 def load_data(year):
     url = "https://www.pro-football-reference.com/years/" + str(year) + "/rushing.htm"
     html = pd.read_html(url, header = 1)
