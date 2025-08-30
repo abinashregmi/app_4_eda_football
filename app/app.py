@@ -28,7 +28,11 @@ def load_data(year):
     if table is None:
         return pd.DataFrame()
 
-    headers = [th.getText() for th in table.find("thead").find_all("th")][1:]
+    # Extract headers from thead
+    header_row = table.find("thead").find_all("tr")[-1]
+    headers = [th.getText() for th in header_row.find_all("th")][1:]
+
+    # Extract rows from tbody
     rows = table.find("tbody").find_all("tr")
     data = []
     for row in rows:
