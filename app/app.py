@@ -10,13 +10,13 @@ from bs4 import BeautifulSoup
 st.title('🏈 NFL Football Stats (Rushing) Explorer')
 
 st.markdown("""
-This app performs simple webscraping of NFL Football player stats data (focusing on Rushing)!
+This app performs simple web scraping of NFL Football player stats data (focusing on Rushing)!
 * **Python libraries:** base64, pandas, streamlit, numpy, matplotlib, seaborn, requests, BeautifulSoup
 * **Data source:** [pro-football-reference.com](https://www.pro-football-reference.com/)
 """)
 
 st.sidebar.header('User Input Features')
-selected_year = st.sidebar.selectbox('Year', list(reversed(range(1990, 2020))))
+selected_year = st.sidebar.selectbox('Year', list(reversed(range(1990, 2023))))
 
 @st.cache_data(show_spinner=True)
 def load_data(year):
@@ -28,11 +28,11 @@ def load_data(year):
     if table is None:
         return pd.DataFrame()
 
-    headers = [th.getText() for th in table.findAll("tr")[0].findAll("th")][1:]
-    rows = table.findAll("tr")[1:]
+    headers = [th.getText() for th in table.find("thead").find_all("th")][1:]
+    rows = table.find("tbody").find_all("tr")
     data = []
     for row in rows:
-        cols = row.findAll("td")
+        cols = row.find_all("td")
         if len(cols) != len(headers):
             continue
         data.append([col.getText() for col in cols])
@@ -47,18 +47,22 @@ if playerstats.empty:
     st.error("Failed to load player stats. The table structure may have changed.")
     st.stop()
 
+# Sidebar - Team selection
 sorted_unique_team = sorted(playerstats.Tm.unique())
 selected_team = st.sidebar.multiselect('Team', sorted_unique_team, sorted_unique_team)
 
+# Sidebar - Position selection
 unique_pos = ['RB', 'QB', 'WR', 'FB', 'TE']
 selected_pos = st.sidebar.multiselect('Position', unique_pos, unique_pos)
 
+# Filtering data
 df_selected_team = playerstats[(playerstats.Tm.isin(selected_team)) & (playerstats.Pos.isin(selected_pos))]
 
 st.header('Display Player Stats of Selected Team(s)')
 st.write(f'Data Dimension: {df_selected_team.shape[0]} rows and {df_selected_team.shape[1]} columns.')
 st.dataframe(df_selected_team)
 
+# Download NFL player stats data
 def filedownload(df):
     csv = df.to_csv(index=False)
     b64 = base64.b64encode(csv.encode()).decode()
@@ -67,10 +71,11 @@ def filedownload(df):
 
 st.markdown(filedownload(df_selected_team), unsafe_allow_html=True)
 
+# Heatmap
 if st.button('Intercorrelation Heatmap'):
     st.header('Intercorrelation Matrix Heatmap')
-    df_selected_team_numeric = df_selected_team.select_dtypes(include=[np.number])
-    corr = df_selected_team_numeric.corr()
+    df_numeric = df_selected_team.select_dtypes(include=[np.number])
+    corr = df_numeric.corr()
     mask = np.zeros_like(corr)
     mask[np.triu_indices_from(mask)] = True
     with sns.axes_style("white"):
