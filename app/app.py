@@ -3,6 +3,7 @@ import pandas as pd
 import base64
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 
 st.set_page_config(page_title="NFL Rushing Stats Explorer", layout="wide")
 
@@ -25,6 +26,7 @@ def load_data(year):
             if "Age" in table.columns and "Tm" in table.columns and "Pos" in table.columns:
                 df = table[table.Age != "Age"]
                 df = df.fillna(0)
+                df = df.drop(["Rk"], axis=1)
                 return df
         return pd.DataFrame()
     except Exception:
