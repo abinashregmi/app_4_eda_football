@@ -21,27 +21,27 @@ selected_year = st.sidebar.selectbox("Year", list(reversed(range(1990, 2020))))
 @st.cache_data(show_spinner=True)
 def load_data(year):
     url = f"https://www.pro-football-reference.com/years/{year}/rushing.htm"
-    try:
-        html = pd.read_html(url, header=1)
-    except ImportError:
-        st.error("Missing dependency: lxml. Please add 'lxml' to requirements.txt.")
-        return pd.DataFrame()
-    df = html[0]
-    df = df[df.Age != "Age"]
+    tables = pd.read_html(url, header=1)
+    for table in tables:
+        if "Tm" in table.columns and "Pos" in table.columns:
+            df = table.copy()
+            break
+    df = df[df[df.columns[df.columns.str.contains("Age")][0]] != "Age"]
     df = df.fillna(0)
-    df = df.drop(columns=["Rk"])
+    if "Rk" in df.columns:
+        df = df.drop(columns=["Rk"])
     return df
 
 playerstats = load_data(selected_year)
 
-sorted_unique_team = sorted(playerstats.Tm.unique())
+sorted_unique_team = sorted(playerstats["Tm"].unique())
 selected_team = st.sidebar.multiselect("Team", sorted_unique_team, sorted_unique_team)
 
 unique_pos = ['RB', 'QB', 'WR', 'FB', 'TE']
 selected_pos = st.sidebar.multiselect("Position", unique_pos, unique_pos)
 
 df_selected_team = playerstats[
-    (playerstats.Tm.isin(selected_team)) & (playerstats.Pos.isin(selected_pos))
+    (playerstats["Tm"].isin(selected_team)) & (playerstats["Pos"].isin(selected_pos))
 ]
 
 st.header("📊 Player Stats of Selected Team(s)")
