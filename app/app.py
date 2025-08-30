@@ -27,9 +27,11 @@ def load_data(year):
     if table is None:
         return pd.DataFrame()
 
+    # Get headers from the last row in thead
     header_row = table.find("thead").find_all("tr")[-1]
     headers = [th.getText() for th in header_row.find_all("th")][1:]  # Skip 'Rk'
 
+    # Get data rows from tbody
     rows = table.find("tbody").find_all("tr")
     data = []
     for row in rows:
@@ -43,8 +45,15 @@ def load_data(year):
     return df
 
 
+
 playerstats = load_data(selected_year)
-st.write("Available columns:", playerstats.columns.tolist())
+
+required_columns = ["Tm", "Pos"]
+missing = [col for col in required_columns if col not in playerstats.columns]
+if missing:
+    st.error(f"Missing required columns: {missing}. The site structure may have changed.")
+    st.write("Available columns:", playerstats.columns.tolist())
+    st.stop()
 
 required_columns = ["Tm", "Pos"]
 missing = [col for col in required_columns if col not in playerstats.columns]
