@@ -4,72 +4,76 @@ import base64
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import requests
+from bs4 import BeautifulSoup
 
-st.set_page_config(page_title="NFL Rushing Stats Explorer", layout="wide")
+st.title('🏈 NFL Football Stats (Rushing) Explorer')
 
-st.title('NFL Football Stats (Rushing) Explorer')
 st.markdown("""
-This app performs simple web scraping of NFL Football player stats data (focusing on Rushing)!
-* **Python libraries:** base64, pandas, streamlit, matplotlib, seaborn  
-* **Data source:** [Pro-Football-Reference.com](https://www.pro-football-reference.com/)
+This app performs simple webscraping of NFL Football player stats data (focusing on Rushing)!
+* **Python libraries:** base64, pandas, streamlit, numpy, matplotlib, seaborn, requests, BeautifulSoup
+* **Data source:** [pro-football-reference.com](https://www.pro-football-reference.com/)
 """)
 
 st.sidebar.header('User Input Features')
-selected_year = st.sidebar.selectbox('Year', list(reversed(range(1990, 2021))))
-debug_mode = st.sidebar.checkbox("Show raw table info")
+selected_year = st.sidebar.selectbox('Year', list(reversed(range(1990, 2020))))
 
 @st.cache_data(show_spinner=True)
 def load_data(year):
     url = f"https://www.pro-football-reference.com/years/{year}/rushing.htm"
-    try:
-        tables = pd.read_html(url, header=1)
-        for table in tables:
-            if "Age" in table.columns and "Tm" in table.columns and "Pos" in table.columns:
-                df = table[table.Age != "Age"]
-                df = df.fillna(0)
-                df = df.drop(["Rk"], axis=1)
-                return df, tables
-        return pd.DataFrame(), tables
-    except Exception:
-        return pd.DataFrame(), []
+    res = requests.get(url)
+    soup = BeautifulSoup(res.content, "html.parser")
+    table = soup.find("table", {"id": "rushing"})
 
-playerstats, raw_tables = load_data(selected_year)
+    if table is None:
+        return pd.DataFrame()
+
+    headers = [th.getText() for th in table.findAll("tr")[0].findAll("th")][1:]
+    rows = table.findAll("tr")[1:]
+    data = []
+    for row in rows:
+        cols = row.findAll("td")
+        if len(cols) != len(headers):
+            continue
+        data.append([col.getText() for col in cols])
+
+    df = pd.DataFrame(data, columns=headers)
+    df = df.fillna(0)
+    return df
+
+playerstats = load_data(selected_year)
 
 if playerstats.empty:
     st.error("Failed to load player stats. The table structure may have changed.")
-    if debug_mode and raw_tables:
-        st.subheader("Debug: Raw Table Structures")
-        for i, table in enumerate(raw_tables):
-            st.write(f"Table {i} Columns: {table.columns.tolist()}")
-else:
-    sorted_unique_team = sorted(playerstats.Tm.unique())
-    selected_team = st.sidebar.multiselect('Team', sorted_unique_team, sorted_unique_team)
+    st.stop()
 
-    unique_pos = ['RB', 'QB', 'WR', 'FB', 'TE']
-    selected_pos = st.sidebar.multiselect('Position', unique_pos, unique_pos)
+sorted_unique_team = sorted(playerstats.Tm.unique())
+selected_team = st.sidebar.multiselect('Team', sorted_unique_team, sorted_unique_team)
 
-    df_selected_team = playerstats[
-        (playerstats.Tm.isin(selected_team)) & 
-        (playerstats.Pos.isin(selected_pos))
-    ]
+unique_pos = ['RB', 'QB', 'WR', 'FB', 'TE']
+selected_pos = st.sidebar.multiselect('Position', unique_pos, unique_pos)
 
-    st.header('Display Player Stats of Selected Team(s)')
-    st.write('Data Dimension: ' + str(df_selected_team.shape[0]) + ' rows and ' + str(df_selected_team.shape[1]) + ' columns.')
-    st.dataframe(df_selected_team)
+df_selected_team = playerstats[(playerstats.Tm.isin(selected_team)) & (playerstats.Pos.isin(selected_pos))]
 
-    def filedownload(df):
-        csv = df.to_csv(index=False)
-        b64 = base64.b64encode(csv.encode()).decode()
-        href = f'<a href="data:file/csv;base64,{b64}" download="playerstats.csv">Download CSV File</a>'
-        return href
+st.header('Display Player Stats of Selected Team(s)')
+st.write(f'Data Dimension: {df_selected_team.shape[0]} rows and {df_selected_team.shape[1]} columns.')
+st.dataframe(df_selected_team)
 
-    st.markdown(filedownload(df_selected_team), unsafe_allow_html=True)
+def filedownload(df):
+    csv = df.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()
+    href = f'<a href="data:file/csv;base64,{b64}" download="playerstats.csv">Download CSV File</a>'
+    return href
 
-    if st.button('Intercorrelation Heatmap'):
-        st.header('Intercorrelation Matrix Heatmap')
-        corr = df_selected_team.select_dtypes(include='number').corr()
-        mask = np.triu(np.ones_like(corr, dtype=bool))
-        with sns.axes_style("white"):
-            fig, ax = plt.subplots(figsize=(7, 5))
-            sns.heatmap(corr, mask=mask, vmax=1, square=True, annot=True, fmt=".2f", cmap="coolwarm", ax=ax)
-        st.pyplot(fig)
+st.markdown(filedownload(df_selected_team), unsafe_allow_html=True)
+
+if st.button('Intercorrelation Heatmap'):
+    st.header('Intercorrelation Matrix Heatmap')
+    df_selected_team_numeric = df_selected_team.select_dtypes(include=[np.number])
+    corr = df_selected_team_numeric.corr()
+    mask = np.zeros_like(corr)
+    mask[np.triu_indices_from(mask)] = True
+    with sns.axes_style("white"):
+        f, ax = plt.subplots(figsize=(7, 5))
+        sns.heatmap(corr, mask=mask, vmax=1, square=True, annot=True, fmt=".2f", cmap="coolwarm")
+    st.pyplot(f)
