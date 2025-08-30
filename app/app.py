@@ -44,16 +44,14 @@ def load_data(year):
     df = df.fillna(0)
     return df
 
+
 playerstats = load_data(selected_year)
-st.write("Columns in playerstats:", playerstats.columns.tolist())
 
-if playerstats.empty:
-    st.error("Failed to load player stats. The table structure may have changed.")
+if "Tm" not in playerstats.columns or "Pos" not in playerstats.columns:
+    st.error("Required columns ('Tm', 'Pos') not found in scraped data. The site structure may have changed.")
+    st.write("Available columns:", playerstats.columns.tolist())
     st.stop()
 
-if "Tm" not in playerstats.columns:
-    st.error("Column 'Tm' not found in data. Check scraping logic.")
-    st.stop()
 
 # Sidebar - Team selection
 sorted_unique_team = sorted_unique_team = sorted(playerstats["Tm"].unique())
